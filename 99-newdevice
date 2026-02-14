@@ -1,0 +1,30 @@
+#!/bin/sh
+#
+# Hotplug script: send Telegram alert when an unknown MAC gets a DHCP lease
+# /etc/hotplug.d/dhcp/99-newdevice
+
+SECRET_FILE="/etc/telegram.secret"
+
+# Load bot token and chat ID
+. "$SECRET_FILE"
+
+# Normalize current MAC to UPPERCASE using awk
+MAC_NORMALIZED=$(echo "$MACADDR" | awk '{print toupper($0)}')
+
+if [ "$ACTION" = "add" ]; then
+    # Extract static MACs (supports option mac + list mac), normalize to UPPERCASE
+    STATIC_MACS=$(uci show dhcp | grep "mac=" | cut -d"'" -f2 | awk '{print toupper($0)}')
+
+    # Debug logging
+#    logger -t macwatch "Hotplug MAC: '$MACADDR' -> Normalized: '$MAC_NORMALIZED'"
+#    logger -t macwatch "Static MACs: $STATIC_MACS"
+
+    # Check if normalized MAC is in static leases
+    if ! echo "$STATIC_MACS" | grep -qw "$MAC_NORMALIZED"; then
+        MESSAGE="🚨 New device detected: $MAC_NORMALIZED got IP $IPADDR on $INTERFACE (hostname: $HOSTNAME)"
+        curl -s -X POST \
+            "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+            -d "chat_id=${CHAT_ID}" \
+            -d "text=${MESSAGE}" >/dev/null
+    fi
+fi
