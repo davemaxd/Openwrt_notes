@@ -1,0 +1,1 @@
+Simple script for Openwrt to notify when an unkown MAC adress, which is not registered in your static leases registers to your network. This script will send you the MAC adres by a telegram bot alert.
